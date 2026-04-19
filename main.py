@@ -5,7 +5,7 @@ import math
 import paho.mqtt.client as mqtt
 
 #mqtt setup
-PI_IP = "10.184.176.60"
+PI_IP = "172.20.10.2"
 client = mqtt.Client()
 
 print(f"Connecting to Pi at {PI_IP}...")
@@ -84,6 +84,7 @@ def get_hand_arr(handLms, img):
                 if x12 - thumbx < 30:
                     output = "UP"
     
+
     return output
 
 def send(message):
@@ -125,33 +126,31 @@ while True:
     
     frame_count += 1
 
-    if frame_count % process_frames == 0:
-        results = hands.process(imgRGB)
+    results = hands.process(imgRGB)
         
-        if results.multi_hand_landmarks:
-            for handLms, handLabel in zip(results.multi_hand_landmarks, results.multi_handedness):
-                mpDraw.draw_landmarks(
-                    img, 
-                    handLms, 
-                    mpHands.HAND_CONNECTIONS,
-                    landmark_style,
-                    connection_style
-                )
+    if results.multi_hand_landmarks:
+        for handLms, handLabel in zip(results.multi_hand_landmarks, results.multi_handedness):
+            mpDraw.draw_landmarks(
+                img, 
+                handLms, 
+                mpHands.HAND_CONNECTIONS,
+                landmark_style,
+                connection_style
+            )
 
-                if (frame_count % process_data_frames == 0):
-                    hand_gesture = get_hand_arr(handLms, img)
-                    # Pass the gesture directly to our updated send function
-                    send(hand_gesture) 
+            if (frame_count % process_data_frames == 0):
+                hand_gesture = get_hand_arr(handLms, img)
+                # Pass the gesture directly to our updated send function
+                send(hand_gesture) 
+    if frame_count % process_frames == 0:
+        cv2.imshow("Hand Control", img)
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('e'):
+            send("ENTER")
+            print("MQTT Sent: ENTER")
+        elif key == ord('q'):
+            break
 
-    cv2.imshow("Hand Control", img)
-    
-    # Press 'q' to quit
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# ==========================================
-# 5. CLEANUP
-# ==========================================
 cap.release()
 cv2.destroyAllWindows()
 client.loop_stop()
