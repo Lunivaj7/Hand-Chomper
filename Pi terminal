@@ -1,0 +1,65 @@
+import paho.mqtt.client as mqtt
+from gpiozero import Button, TonalBuzzer
+from pynput.keyboard import Key, Controller
+import time
+
+--- 1. Setup ---
+keyboard = Controller()
+bz = TonalBuzzer(12, octaves=4)
+
+Define physical buttons
+btns = {
+    "UP": Button(17),
+    "DOWN": Button(27),
+    "LEFT": Button(22),
+    "RIGHT": Button(0),
+    "ENTER": Button(5)
+}
+
+Map strings to actual Keyboard Keys
+key_map = {
+    "UP": Key.up,
+    "DOWN": Key.down,
+    "LEFT": Key.left,
+    "RIGHT": Key.right,
+    "ENTER": Key.enter
+}
+
+--- 2. The "Trickery" Logic ---
+def simulate_key(direction):
+    if direction in key_map:
+        print(f"Simulating Key: {direction}")
+        # Press and release the key
+        keyboard.press(key_map[direction])
+        time.sleep(0.1) 
+        keyboard.release(key_map[direction])
+
+Audio feedback through your 2N2222 circuit
+        bz.play(600)
+        time.sleep(0.05)
+        bz.stop()
+
+--- 3. MQTT Wireless Listener ---
+def on_message(client, userdata, msg):
+    cmd = msg.payload.decode().upper()
+    simulate_key(cmd)
+
+client = mqtt.Client()
+client.on_message = on_message
+client.connect("localhost", 1883, 60)
+client.subscribe("pacman/control")
+client.loop_start()
+
+--- 4. Main Loop for Physical Buttons ---
+print("Virtual Keyboard Active!")
+print("Now open any game. The Pi will inject keypresses automatically.")
+
+try:
+    while True:
+        for direction, btn in btns.items():
+            if btn.is_pressed:
+                simulate_key(direction)
+                time.sleep(0.2) # Prevent 'key chatter'
+        time.sleep(0.01)
+except KeyboardInterrupt:
+    bz.stop()
